@@ -1,7 +1,7 @@
 # Setting up Jenkins for Simple-Time-Service
 
 ## Repository
-Repository URL: [Simple Time Service](https://github.com/yourusername/simple-time-service.git)
+Repository URL: [Simple Time Service](https://github.com/kishoredas22/simple-time-service.git)
 
 ## Overview
 This guide focuses on setting up Jenkins to automate the entire build and deployment process for the Simple Time Service application. Since everything is managed through the pipeline, no manual execution is required.
@@ -32,7 +32,7 @@ Navigate to **Manage Jenkins > Manage Credentials** and add:
 1. Open Jenkins Dashboard
 2. Click **New Item** > Select **Pipeline**
 3. Under **Pipeline Definition**, select **Pipeline script from SCM**
-4. Enter the repository URL: `https://github.com/yourusername/simple-time-service.git`
+4. Enter the repository URL: `https://github.com/kishoredas22/simple-time-service.git`
 5. Set the script path to `Jenkinsfile`
 
 ### 3. Configure Webhooks for Automated Deployment
