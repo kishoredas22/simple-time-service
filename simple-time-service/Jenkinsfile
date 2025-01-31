@@ -1,0 +1,78 @@
+pipeline {
+    agent any
+    environment {
+        IMAGE_NAME = "your-dockerhub-username/simple-time-service:latest"
+        GOOGLE_CLOUD_PROJECT = credentials('gcp-project-id')  // GCP Project ID from Jenkins credentials
+    }
+    stages {
+        stage('Clone Repository') {
+            steps {
+                git 'https://github.com/yourusername/simple-time-service.git'
+            }
+        }
+        stage('Build JAR') {
+            steps {
+                sh 'mvn clean package'
+            }
+        }
+        stage('Login to Docker Hub') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'docker-hub-credentials', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                    sh 'echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin'
+                }
+            }
+        }
+        stage('Build Docker Image') {
+            steps {
+                sh 'docker build -t $IMAGE_NAME .'
+            }
+        }
+        stage('Push Docker Image') {
+            steps {
+                sh 'docker push $IMAGE_NAME'
+            }
+        }
+        stage('Authenticate with GCP') {
+            steps {
+                withCredentials([file(credentialsId: 'gcp-service-account-key', variable: 'GOOGLE_APPLICATION_CREDENTIALS')]) {
+                    sh '''
+                        gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS
+                        gcloud config set project $GOOGLE_CLOUD_PROJECT
+                    '''
+                }
+            }
+        }
+        stage('Terraform Init & Apply') {
+            steps {
+                dir('terraform') {
+                    withCredentials([file(credentialsId: 'gcp-service-account-key', variable: 'GOOGLE_APPLICATION_CREDENTIALS')]) {
+                        sh '''
+                            export GOOGLE_APPLICATION_CREDENTIALS=$GOOGLE_APPLICATION_CREDENTIALS
+                            terraform init
+                            terraform apply -auto-approve
+                        '''
+                    }
+                }
+            }
+        }
+        stage('Deploy to Kubernetes') {
+            steps {
+                withCredentials([file(credentialsId: 'gcp-service-account-key', variable: 'GOOGLE_APPLICATION_CREDENTIALS')]) {
+                    sh '''
+                        gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS
+                        gcloud container clusters get-credentials your-gke-cluster --zone your-cluster-zone --project $GOOGLE_CLOUD_PROJECT
+                        kubectl apply -f kubernetes/
+                    '''
+                }
+            }
+        }
+    }
+    post {
+        success {
+            echo 'Deployment Successful!'
+        }
+        failure {
+            echo 'Deployment Failed. Check logs.'
+        }
+    }
+}
